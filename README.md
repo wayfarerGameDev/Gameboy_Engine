@@ -2,7 +2,7 @@
 Gameboy engine using rgbds and asm (GBZ80)
 
 <h1>Examples</h1>
-<h2>Hello world</h2>
+<h3>Hello world</h3>
 <p>Mimlistic example of getting tiles to screen and game loop. <br>
 Supports cartridges.
 </p>
