@@ -1,19 +1,25 @@
 INCLUDE "engine_audio.inc"
 INCLUDE "engine_graphics.inc"
+INCLUDE "engine_header.inc"
 INCLUDE "engine_lcd.inc"
 INCLUDE "engine_memory.inc"
 
-; Header
-SECTION "header", ROM0[$100]
-jp Main
-ds $150 -@, 0
+ENGINE_HEADER
+ENGINE_MEMORY_COPY
 
 Main:
 ; Turn off audio to prevent "Screech of Death" when first loading up rom
 ENGINE_AUDIO_SHUTDOWN
-; Wait gameboy to finish rendering and turn off lcd
+; Wait for VBlank (vertical blanking interval)
+; VRAM, OAM, and LCD control registers are unsafe to  
+; modify while the LCD is actively drawing scanlines.
 ENGINE_LCD_VBLANK_WAIT
+; Disable the LCD controller.
+; This immediately halts rendering and allows unrestricted
+; access to VRAM and OAM memory.
+; Turning off outside of VBlank can permanently damage original gameboy hardware
 ENGINE_LCD_OFF
+; Load the default background palette.
 ENGINE_LCD_PALLET_DEFAULT
 ; Set tileset
 ENGINE_GRAPHICS_TILESET_LOAD Tileset_HelloWorld, TilesetEnd_HelloWorld
@@ -21,7 +27,11 @@ call Engine_Memory_Copy
 ; Set tilemap
 ENGINE_GRAPHICS_TILEMAP_LOAD Tilemap_HelloWorld, TilemapEnd_HelloWorld
 call Engine_Memory_Copy
-; Turn on lcd
+; Turn the LCD controller back on.
+; At this point:
+; - Tiles are in VRAM
+; - Tilemap is configured
+; - Palette is set
 ENGINE_LCD_ON
 
 GameLoop:
@@ -33,8 +43,6 @@ ENGINE_LCD_VBLANK_WAIT
 ; Write OAM / sprite updates
 ENGINE_LCD_VBLANK_END
 jp GameLoop
-
-ENGINE_MEMORY_COPY
 
 SECTION "data_tiles", ROM0
 
