@@ -1,13 +1,19 @@
 INCLUDE "engine_audio.inc"
 INCLUDE "engine_graphics.inc"
-INCLUDE "engine_header.inc"
 INCLUDE "engine_lcd.inc"
 INCLUDE "engine_memory.inc"
+INCLUDE "engine_system.inc"
 
-ENGINE_HEADER
-ENGINE_MEMORY_COPY
+ENGINE_SYSTEM_WRAM
+ENGINE_SYSTEM_HEADER_DMG_CGB Begin
+ENGINE_GRAPHICS_PALLET_CGB_SET_ROUTINE
+ENGINE_MEMORY_COPY_ROUTINE
 
-Main:
+Begin:
+; Set stack pointer to top of WRAM
+ENGINE_MEMORY_STACK_POINTER_SET
+; Store system type
+ENGINE_SYSTEM_TYPE_STORE
 ; Turn off audio to prevent "Screech of Death" when first loading up rom
 ENGINE_AUDIO_SHUTDOWN
 ; Wait for VBlank (vertical blanking interval)
@@ -18,23 +24,23 @@ ENGINE_LCD_VBLANK_WAIT
 ; This immediately halts rendering and allows unrestricted
 ; access to VRAM and OAM memory.
 ; Turning off outside of VBlank can permanently damage original gameboy hardware
-ENGINE_LCD_OFF
-; Load the default background palette.
-ENGINE_LCD_PALLET_DEFAULT
-; Set tileset
-ENGINE_GRAPHICS_TILESET_LOAD Tileset_HelloWorld, TilesetEnd_HelloWorld
-call Engine_Memory_Copy
-; Set tilemap
-ENGINE_GRAPHICS_TILEMAP_LOAD Tilemap_HelloWorld, TilemapEnd_HelloWorld
-call Engine_Memory_Copy
-; Turn the LCD controller back on.
+ENGINE_LCD_MODE fENGINE_LCD_MODE_OFF
+; Load defafault pallet : Default to DMG and upgrade if CGB is supported
+ENGINE_GRAPHICS_PALLET_DMG_DEFAULT
+ENGINE_SYSTEM_TYPE_IF_CGB .pallet_end
+ENGINE_GRAPHICS_PALLET_CGB_SET Palette_Red
+.pallet_end
+; Set tileset | tilemap
+ENGINE_GRAPHICS_TILESET_LOAD Tileset_HelloWorld, TilesetEnd_HelloWorld, vENGINE_GRAPHICS_TILESET1, Engine_Memory_Copy
+ENGINE_GRAPHICS_TILEMAP_LOAD Tilemap_HelloWorld, TilemapEnd_HelloWorld, vENGINE_GRAPHICS_TILEMAP0, Engine_Memory_Copy
+; Turn the LCD controller back on
 ; At this point:
+; - Palette is set
 ; - Tiles are in VRAM
 ; - Tilemap is configured
-; - Palette is set
-ENGINE_LCD_ON
+ENGINE_LCD_MODE fENGINE_LCD_MODE_BG_SIGNED
 
-GameLoop:
+Update:
 ENGINE_LCD_VBLANK_WAIT
 ; Read input
 ; Update game state
@@ -42,10 +48,25 @@ ENGINE_LCD_VBLANK_WAIT
 ; Write tilemap data to VRAM
 ; Write OAM / sprite updates
 ENGINE_LCD_VBLANK_END
-jp GameLoop
+jp Update
 
-SECTION "data_tiles", ROM0
+SECTION "data_game", ROM0
 
+Palette_Red:
+ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 26,16,16, 18,4,4, 0,0,0
+Palette_Green:
+ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 18,24,16, 6,14,6, 0,0,0
+Palette_Blue:
+ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 16,18,26, 4,6,18, 0,0,0
+Palette_Yellow:
+ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,24,10, 20,14,2, 0,0,0
+Palette_Purple:
+ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 22,16,24, 12,4,14, 0,0,0
+Palette_Orange:
+ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,8, 20,8,2, 0,0,0
+Palette_Pink:
+ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,22, 20,8,12, 0,0,0
+    
 Tileset_HelloWorld:
 dw `22222222, `22222222, `22222222, `22222222, `22222222, `22222222, `22222222, `22222222 ; $00
 dw `22222222, `20000000, `20000000, `20000000, `20000000, `20000000, `20000000, `20000000 ; $01
@@ -120,22 +141,23 @@ dw `22222223, `32222222, `22222223, `32222222, `22222223, `32222222, `22222223, 
 TilesetEnd_HelloWorld:
 
 Tilemap_HelloWorld:
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$01,$02,$03,$01,$04,$03,$01,$05,$00,$01,$05,$00,$06,$04,$07,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$08,$09,$0a,$0b,$0c,$0d,$0b,$0e,$0f,$08,$0e,$0f,$10,$11,$12,$13,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$14,$15,$16,$17,$18,$19,$1a,$1b,$0f,$14,$1b,$0f,$14,$1c,$16,$1d,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$1e,$1f,$20,$21,$22,$23,$24,$22,$25,$1e,$22,$25,$26,$22,$27,$1d,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$01,$28,$29,$2a,$2b,$2c,$2d,$2b,$2e,$2d,$2f,$30,$2d,$31,$32,$33,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$08,$34,$0a,$0b,$11,$0a,$0b,$35,$36,$0b,$0e,$0f,$08,$37,$0a,$38,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$14,$39,$16,$17,$1c,$16,$17,$3a,$3b,$17,$1b,$0f,$14,$3c,$16,$1d,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$1e,$3d,$3e,$3f,$22,$27,$21,$1f,$20,$21,$22,$25,$1e,$22,$40,$1d,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$00,$41,$42,$43,$44,$30,$33,$41,$45,$43,$41,$30,$43,$41,$30,$33,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,0,0,0,0,0,0,0,0,0,0,0,0
+; Original $00 becomes $80, $01 becomes $81, etc.
+db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$81,$82,$83,$81,$84,$83,$81,$85,$80,$81,$85,$80,$86,$84,$87,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$88,$89,$8a,$8b,$8c,$8d,$8b,$8e,$8f,$88,$8e,$8f,$90,$91,$92,$93,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$94,$95,$96,$97,$98,$99,$9a,$9b,$8f,$94,$9b,$8f,$94,$9c,$96,$9d,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$9e,$9f,$a0,$a1,$a2,$a3,$a4,$a2,$a5,$9e,$a2,$a5,$a6,$a2,$a7,$9d,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$81,$a8,$a9,$aa,$ab,$ac,$ad,$ab,$ae,$ad,$af,$b0,$ad,$b1,$b2,$b3,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$88,$b4,$8a,$8b,$91,$8a,$8b,$b5,$b6,$8b,$8e,$8f,$88,$b7,$8a,$b8,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$94,$b9,$96,$97,$9c,$96,$97,$ba,$bb,$97,$9b,$8f,$94,$bc,$96,$9d,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$9e,$bd,$be,$bf,$a2,$a7,$a1,$9f,$a0,$a1,$a2,$a5,$9e,$a2,$c0,$9d,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$80,$c1,$c2,$c3,$c4,$b0,$b3,$c1,$c5,$c3,$c1,$b0,$c3,$c1,$b0,$b3,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
+db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
 TilemapEnd_HelloWorld:
