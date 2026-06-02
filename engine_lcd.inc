@@ -1,20 +1,24 @@
 ; Register constants
-DEF rLY                                   EQU $FF44 ; LCD Y-Coordinate (The current scanline 0-153)
-DEF rLCDC                                 EQU $FF40 ; LCD Control (The Master Switchboard)
+DEF rLY                                        EQU $FF44 ; LCD Y-Coordinate (The current scanline 0-153)
+DEF rLCDC                                      EQU $FF40 ; LCD Control (The Master Switchboard)
 
 ; LCD mode Flags
-DEF fENGINE_LCD_MODE_OFF                   EQU %00000000 ; Shutdown LCD
-DEF fENGINE_LCD_MODE_BG_SIGNED             EQU %10000001 ; Signed Mode: Use for UI protection/Large maps
-DEF fENGINE_LCD_MODE_BG_UNSIGNED           EQU %10010001 ; Unsigned Mode: Use for sharing tiles with Sprites
-DEF fENGINE_LCD_MODE_BG_SPRITE_SIGNED      EQU %10000011 ; BG at $8800, Sprites ON
-DEF fENGINE_LCD_MODE_BG_SPRITE_UNSIGNED    EQU %10010011 ; BG at $8000, Sprites ON
+DEF fENGINE_LCD_MODE_BASE_OFF                  EQU %00000000 ; Shutdown LCD
+DEF fENGINE_LCD_MODE_BASE_BG_SIGNED            EQU %10000001 ; Signed Mode: Use for UI protection/Large maps
+DEF fENGINE_LCD_MODE_BASE_BG_UNSIGNED          EQU %10010001 ; Unsigned Mode: Use for sharing tiles with Sprites
+DEF fENGINE_LCD_MODE_BASE_BG_SPRITE_SIGNED     EQU %10000011 ; BG at $8800, Sprites ON
+DEF fENGINE_LCD_MODE_BASE_BG_SPRITE_UNSIGNED   EQU %10010011 ; BG at $8000, Sprites ON
+DEF fENGINE_LCD_MODE_MODIFIER_MAP1             EQU %00001000 ; Bit 3 controls current tilemap, turn it on for map 1
+
+; LC
+DEF cENGINE_LCD_VBLANK                         EQU 144  ; V-Blank begins at scanline 144
 
 ; Wait for vblank
 ; Loops until the LCD enters the vertical blanking period.
 MACRO ENGINE_LCD_VBLANK_WAIT
 .vBlankWait\@
 ldh a, [rLY]
-cp 144
+cp cENGINE_LCD_VBLANK
 jr c, .vBlankWait\@
 ENDM
 
@@ -23,7 +27,7 @@ ENDM
 MACRO ENGINE_LCD_VBLANK_END
 .vBlankEnd\@
 ldh a, [rLY]
-cp 144
+cp cENGINE_LCD_VBLANK
 jr nc, .vBlankEnd\@
 ENDM
 

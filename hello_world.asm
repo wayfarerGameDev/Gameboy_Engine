@@ -24,21 +24,21 @@ ENGINE_LCD_VBLANK_WAIT
 ; This immediately halts rendering and allows unrestricted
 ; access to VRAM and OAM memory.
 ; Turning off outside of VBlank can permanently damage original gameboy hardware
-ENGINE_LCD_MODE fENGINE_LCD_MODE_OFF
+ENGINE_LCD_MODE fENGINE_LCD_MODE_BASE_OFF
 ; Load defafault pallet : Default to DMG and upgrade if CGB is supported
 ENGINE_GRAPHICS_PALLET_DMG_DEFAULT
 ENGINE_SYSTEM_TYPE_IF_CGB .pallet_end
 ENGINE_GRAPHICS_PALLET_CGB_SET Palette_Red
 .pallet_end
 ; Set tileset | tilemap
-ENGINE_GRAPHICS_TILESET_LOAD Tileset_HelloWorld, TilesetEnd_HelloWorld, vENGINE_GRAPHICS_TILESET1, Engine_Memory_Copy
-ENGINE_GRAPHICS_TILEMAP_LOAD Tilemap_HelloWorld, TilemapEnd_HelloWorld, vENGINE_GRAPHICS_TILEMAP0, Engine_Memory_Copy
+ENGINE_GRAPHICS_TILESET_LOAD TilesetStart_HelloWorld, TilesetEnd_HelloWorld, cENGINE_GRAPHICS_TILESET1, Engine_Memory_Copy
+ENGINE_GRAPHICS_TILEMAP_LOAD TilemapStart_HelloWorld, TilemapEnd_HelloWorld, cENGINE_GRAPHICS_TILEMAP0, Engine_Memory_Copy
 ; Turn the LCD controller back on
 ; At this point:
 ; - Palette is set
 ; - Tiles are in VRAM
 ; - Tilemap is configured
-ENGINE_LCD_MODE fENGINE_LCD_MODE_BG_SIGNED
+ENGINE_LCD_MODE fENGINE_LCD_MODE_BASE_BG_SIGNED
 
 Update:
 ENGINE_LCD_VBLANK_WAIT
@@ -67,7 +67,7 @@ ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,8, 20,8,2, 0,0,0
 Palette_Pink:
 ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,22, 20,8,12, 0,0,0
     
-Tileset_HelloWorld:
+TilesetStart_HelloWorld:
 dw `22222222, `22222222, `22222222, `22222222, `22222222, `22222222, `22222222, `22222222 ; $00
 dw `22222222, `20000000, `20000000, `20000000, `20000000, `20000000, `20000000, `20000000 ; $01
 dw `22222222, `02222220, `02222220, `02222220, `02222220, `02222220, `02222220, `02222220 ; $02
@@ -140,7 +140,7 @@ dw `22232323, `22323232, `22232323, `22223232, `22232323, `22223232, `22222223, 
 dw `22222223, `32222222, `22222223, `32222222, `22222223, `32222222, `22222223, `22222222 ; $45
 TilesetEnd_HelloWorld:
 
-Tilemap_HelloWorld:
+TilemapStart_HelloWorld:
 ; Original $00 becomes $80, $01 becomes $81, etc.
 db $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80
 db $80,$80,$81,$82,$83,$81,$84,$83,$81,$85,$80,$81,$85,$80,$86,$84,$87,$80,$80,$80, $80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80,$80

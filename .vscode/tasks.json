@@ -1,0 +1,37 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build GBE",
+            "type": "shell",
+            "command": "mkdir -p build && rgbasm -o build/${input:asmFileName}.o ${input:asmFileName}.asm && rgblink -m build/${input:asmFileName}.sym -o build/${input:asmFileName}.gb build/${input:asmFileName}.o && rgbfix -v -p 0xFF build/${input:asmFileName}.gb",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "silent",
+                "close": true
+            }
+        },
+        {
+            "label": "Run GBE",
+            "type": "shell",
+            "command": "java -jar \"/Applications/Emulicious/Emulicious.jar\" build/${input:asmFileName}.gb",
+            "dependsOn": "Build GBE",
+            "presentation": {
+                "reveal": "always",
+                "close": true
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "asmFileName",
+            "type": "promptString",
+            "description": "Enter the name of your ASM file (without the extension):",
+            "default": "hello_world"
+        }
+    ]
+}

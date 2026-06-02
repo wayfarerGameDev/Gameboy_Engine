@@ -6,13 +6,12 @@ DEF rBCPS                                 EQU $FF68 ; Background Color Palette S
 DEF rBCPD                                 EQU $FF69 ; Background Color Palette Data (CGB)
 
 ; Memory constants
-DEF vENGINE_GRAPHICS_TILESET0             EQU $8000 ; Start of Block 0: Standard Sprite/BG tiles (0-127): Gameplay (Sprites & Level)
-DEF vENGINE_GRAPHICS_TILESET1             EQU $8800 ; Start of Block 1: Shared/Signed BG tiles (128-255): "Bridge"
-DEF vENGINE_GRAPHICS_TILESET2             EQU $9000 ; Start of Block 2: BG-only tiles (256-383): UI & Fonts
-DEF vENGINE_GRAPHICS_TILEMAP0             EQU $9800 ; Start of Background Map 0
-DEF vENGINE_GRAPHICS_TILEMAP1             EQU $9C00 ; Start of Background Map 1
+DEF cENGINE_GRAPHICS_TILESET0             EQU $8000 ; Start of Block 0: Standard Sprite/BG tiles (0-127): Gameplay (Sprites & Level)
+DEF cENGINE_GRAPHICS_TILESET1             EQU $8800 ; Start of Block 1: Shared/Signed BG tiles (128-255): "Bridge"
+DEF cENGINE_GRAPHICS_TILESET2             EQU $9000 ; Start of Block 2: BG-only tiles (256-383): UI & Fonts
+DEF cENGINE_GRAPHICS_TILEMAP0             EQU $9800 ; Start of Background Map 0
+DEF cENGINE_GRAPHICS_TILEMAP1             EQU $9C00 ; Start of Background Map 1
 
-; RGB helper macro
 ; Define a full 4-color palette on one line
 ; Usage: ENGINE_GRAPHICS_PALLET_DATA R,G,B, R,G,B, R,G,B, R,G,B
 MACRO ENGINE_GRAPHICS_PALLET_DATA
