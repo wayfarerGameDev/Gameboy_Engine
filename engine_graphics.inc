@@ -1,9 +1,40 @@
+; ==============================================================================
+; MODULE DESCRIPTION
+; ==============================================================================
+; Provides an interface for graphics management, including tile loading, 
+; tilemap management, and color palette configuration for both DMG and CGB 
+; hardware.
+
+; ==============================================================================
+; TODO
+; ==============================================================================
+; [ ] Implement OAM (Sprite) shadow buffer system.
+; [ ] Add scrolling support for Background and Window layers.
+
+; ==============================================================================
+; LICENSE
+; ==============================================================================
+; Copyright (c) 2026 [Nicholas Gennady Korta]. All rights reserved.
+;
+; This source code is free software: you can redistribute it and/or modify
+; it under the terms of the GNU Lesser General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version.
+;
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+; GNU Lesser General Public License for more details.
+
 ; DMG register constants
-DEF rBGP                                  EQU $FF47 ; Background Palette (DMG)
+DEF _rBGP                                 EQU $FF47 ; Background Palette (DMG)
 
 ; CGB register constants
-DEF rBCPS                                 EQU $FF68 ; Background Color Palette Specification (CGB)
-DEF rBCPD                                 EQU $FF69 ; Background Color Palette Data (CGB)
+DEF _rBCPS                                EQU $FF68 ; Background Color Palette Specification (CGB)
+DEF _rBCPD                                EQU $FF69 ; Background Color Palette Data (CGB)
+
+; DMG constants
+DEF _cENGINE_GRAPHICS_PALLET_DEFAULT      EQU %11100100 ; EQU %11100100 ; Default 4-color palette mapping
 
 ; Memory constants
 DEF cENGINE_GRAPHICS_TILESET0             EQU $8000 ; Start of Block 0: Standard Sprite/BG tiles (0-127): Gameplay (Sprites & Level)
@@ -12,58 +43,69 @@ DEF cENGINE_GRAPHICS_TILESET2             EQU $9000 ; Start of Block 2: BG-only 
 DEF cENGINE_GRAPHICS_TILEMAP0             EQU $9800 ; Start of Background Map 0
 DEF cENGINE_GRAPHICS_TILEMAP1             EQU $9C00 ; Start of Background Map 1
 
-; Define a full 4-color palette on one line
-; Usage: ENGINE_GRAPHICS_PALLET_DATA R,G,B, R,G,B, R,G,B, R,G,B
-MACRO ENGINE_GRAPHICS_PALLET_DATA
+; dENGINE_GRAPHICS_PALLET_DATA
+; - Usage: dENGINE_GRAPHICS_PALLET_DATA R,G,B, R,G,B, R,G,B, R,G,B
+; - Description: Define a full 4-color palette.
+MACRO dENGINE_GRAPHICS_PALLET_DATA
 dw ((\1) | (\2 << 5) | (\3 << 10)) & $7FFF
 dw ((\4) | (\5 << 5) | (\6 << 10)) & $7FFF
 dw ((\7) | (\8 << 5) | (\9 << 10)) & $7FFF
 dw ((\10) | (\11 << 5) | (\12 << 10)) & $7FFF
 ENDM
 
-; Load tileset
-; Usage: ENGINE_GRAPHICS_TILESET_LOAD SourceStart, SoureEnd, Destination, MemoryCopyRoutine
-MACRO ENGINE_GRAPHICS_TILESET_LOAD
+; iENGINE_GRAPHICS_TILESET_LOAD
+; - Destroys: Registers A, HL, DE, BC
+; - Usage: iENGINE_GRAPHICS_TILESET_LOAD SourceStart, SourceEnd, Destination, MemoryCopyRoutine
+; - Description: Loads a tileset block into VRAM.
+MACRO iENGINE_GRAPHICS_TILESET_LOAD
 ld hl, \3
 ld de, \1
 ld bc, \2 - \1
 call \4
 ENDM
 
-; Load tilemap
-; Usage: ENGINE_GRAPHICS_TILEMAP_LOAD SourceStart, SoureEnd, Destination, MemoryCopyRoutine
-MACRO ENGINE_GRAPHICS_TILEMAP_LOAD
-ld HL, \3
-ld DE, \1 
-ld BC, \2 - \1
+; iENGINE_GRAPHICS_TILEMAP_LOAD
+; - Destroys: Registers A, HL, DE, BC
+; - Usage: iENGINE_GRAPHICS_TILEMAP_LOAD SourceStart, SourceEnd, Destination, MemoryCopyRoutine
+; - Description: Loads a tilemap block into VRAM.
+MACRO iENGINE_GRAPHICS_TILEMAP_LOAD
+ld hl, \3
+ld de, \1 
+ld bc, \2 - \1
 call \4
 ENDM
 
-; Set background pallet: default
-MACRO ENGINE_GRAPHICS_PALLET_DMG_DEFAULT
-ld A, %11100100
-ld [rBGP], A
+; iENGINE_GRAPHICS_PALLET_DMG_DEFAULT
+; - Destroys: Registers A
+; - Usage: iENGINE_GRAPHICS_PALLET_DMG_DEFAULT
+; - Description: Sets the default DMG background palette.
+MACRO iENGINE_GRAPHICS_PALLET_DMG_DEFAULT
+ld a, _cENGINE_GRAPHICS_PALLET_DEFAULT
+ldh [_rBGP], a
 ENDM
 
-MACRO ENGINE_GRAPHICS_PALLET_CGB_SET
-; We needd to still set dmg pallet or we will get blank screen
-ENGINE_GRAPHICS_PALLET_DMG_DEFAULT
-; Set pallet
+; iENGINE_GRAPHICS_PALLET_CGB_SET
+; - Destroys: Registers A, HL
+; - Usage: iENGINE_GRAPHICS_PALLET_CGB_SET DataPointer
+; - Description: Sets CGB palette; also sets DMG default to avoid blank screen.
+MACRO iENGINE_GRAPHICS_PALLET_CGB_SET
+iENGINE_GRAPHICS_PALLET_DMG_DEFAULT
 ld hl, \1
 call EngineGraphicsPalletCGBSet
 ENDM
 
-; Load a palette from a data pointer
-; Input: HL = Address of the 8-byte palette data
-; Uses: A, HL
-MACRO ENGINE_GRAPHICS_PALLET_CGB_SET_ROUTINE
+; iENGINE_GRAPHICS_PALLET_CGB_SET_SUBROUTINE
+; - Destroys: Registers A, B, HL, Flags
+; - Usage: call EngineGraphicsPalletCGBSet
+; - Description: Subroutine to load palette data from HL to CGB palette RAM.
+MACRO iENGINE_GRAPHICS_PALLET_CGB_SET_SUBROUTINE
 EngineGraphicsPalletCGBSet:
 ld a, $80          ; Start at Index 0 with auto-increment
-ldh [rBCPS], a
+ldh [_rBCPS], a
 ld b, 8            ; A palette is 8 bytes (4 colors * 2 bytes)
 .loop:
 ld a, [hli]        ; Get byte from data
-ldh [rBCPD], a     ; Write to palette RAM
+ldh [_rBCPD], a     ; Write to palette RAM
 dec b
 jr nz, .loop
 ret

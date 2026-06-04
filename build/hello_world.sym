@@ -1,36 +1,46 @@
 SUMMARY:
-	ROM0: 1940 bytes used / 14444 free
-	WRAM0: 1 byte used / 4095 free
+	ROM0: 2100 bytes used / 14284 free
+	WRAM0: 5 bytes used / 4091 free
 
 ROM0 bank #0:
 	EMPTY: $0000-$00ff ($0100 bytes)
-	SECTION: $0100-$01bb ($00bc bytes) ["header"]
+	SECTION: $0100-$025b ($015c bytes) ["header"]
 	         $0150 = EngineGraphicsPalletCGBSet
 	         $0156 = EngineGraphicsPalletCGBSet.loop
 	         $015d = Engine_Memory_Copy
 	         $0166 = Begin
-	         $016f = Begin.vBlankWait_u1
-	         $0191 = Begin.pallet_end
-	         $01ad = Update.vBlankWait_u2
-	         $01ad = Update
-	         $01b3 = Update.vBlankEnd_u3
-	SECTION: $01bc-$0893 ($06d8 bytes) ["data_game"]
-	         $01bc = Palette_Red
-	         $01c4 = Palette_Green
-	         $01cc = Palette_Blue
-	         $01d4 = Palette_Yellow
-	         $01dc = Palette_Purple
-	         $01e4 = Palette_Orange
-	         $01ec = Palette_Pink
-	         $01f4 = TilesetStart_HelloWorld
-	         $0654 = TilesetEnd_HelloWorld
-	         $0654 = TilemapStart_HelloWorld
-	         $0894 = TilemapEnd_HelloWorld
-	EMPTY: $0894-$3fff ($376c bytes)
-	TOTAL EMPTY: $386c bytes
+	         $017d = Begin.vBlankWait_u1
+	         $019d = Begin.pallet_end
+	         $01bd = Update.vBlankWait_u2
+	         $01bd = Update
+	         $0225 = Update.input_up
+	         $0231 = Update.input_down
+	         $023d = Update.input_left
+	         $0249 = Update.input_right
+	         $0253 = Update.input_none
+	         $0253 = Update.vBlankEnd_u3
+	SECTION: $025c-$0933 ($06d8 bytes) ["data_game"]
+	         $025c = Palette_Red
+	         $0264 = Palette_Green
+	         $026c = Palette_Blue
+	         $0274 = Palette_Yellow
+	         $027c = Palette_Purple
+	         $0284 = Palette_Orange
+	         $028c = Palette_Pink
+	         $0294 = TilesetStart_HelloWorld
+	         $06f4 = TilesetEnd_HelloWorld
+	         $06f4 = TilemapStart_HelloWorld
+	         $0934 = TilemapEnd_HelloWorld
+	EMPTY: $0934-$3fff ($36cc bytes)
+	TOTAL EMPTY: $37cc bytes
 
 WRAM0 bank #0:
-	SECTION: $c000-$c000 ($0001 byte) ["engine_system_wram"]
-	         $c000 = wEngineSystemType
-	EMPTY: $c001-$cfff ($0fff bytes)
-	TOTAL EMPTY: $0fff bytes
+	SECTION: $c000-$c003 ($0004 bytes) ["engine_input_wram"]
+	         $c000 = wEngineInputCurrent
+	         $c001 = wEngineInputPrevious
+	         $c002 = wEngineInputPressed
+	         $c003 = wEngineInputReleased
+	SECTION: $c004-$c004 ($0001 byte) ["engine_system_wram"]
+	         $c004 = wEngineSystemType
+	EMPTY: $c005-$cfff ($0ffb bytes)
+	TOTAL EMPTY: $0ffb bytes

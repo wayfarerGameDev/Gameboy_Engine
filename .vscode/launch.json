@@ -5,19 +5,11 @@
             "type": "emulicious-debugger",
             "request": "launch",
             "name": "Debug GBE",
-            "program": "${workspaceFolder}/build/${input:asmFileName}.gb",
+            "program": "${workspaceFolder}/build/${fileBasenameNoExtension}.gb",
             "emuliciousPath": "/Applications/Emulicious/Emulicious.jar",
             "port": 58870,
             "stopOnEntry": false,
             "preLaunchTask": "Build GBE"
-        }
-    ],
-     "inputs": [
-        {
-            "id": "asmFileName",
-            "type": "promptString",
-            "description": "Enter the name of your ASM file (without the extension):",
-            "default": "hello_world"
         }
     ]
 }

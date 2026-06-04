@@ -1,71 +1,104 @@
+; ==============================================================================
+; HELLO WORLD DEMONSTRATION
+; ==============================================================================
+; A basic implementation showing engine initialization, palette swapping, 
+; and input handling.
+
 INCLUDE "engine_audio.inc"
 INCLUDE "engine_graphics.inc"
+INCLUDE "engine_input.inc"
 INCLUDE "engine_lcd.inc"
 INCLUDE "engine_memory.inc"
 INCLUDE "engine_system.inc"
 
-ENGINE_SYSTEM_WRAM
-ENGINE_SYSTEM_HEADER_DMG_CGB Begin
-ENGINE_GRAPHICS_PALLET_CGB_SET_ROUTINE
-ENGINE_MEMORY_COPY_ROUTINE
+; Section: Work ram
+sENGINE_SYSTEM_WRAM
+sENGINE_INPUT_WRAM
 
+; Header
+sENGINE_SYSTEM_HEADER_CGB
+
+; Subroutines
+iENGINE_GRAPHICS_PALLET_CGB_SET_SUBROUTINE
+iENGINE_MEMORY_COPY_SUBROUTINE
+
+; Begin
 Begin:
-; Set stack pointer to top of WRAM
-ENGINE_MEMORY_STACK_POINTER_SET
-; Store system type
-ENGINE_SYSTEM_TYPE_STORE
-; Turn off audio to prevent "Screech of Death" when first loading up rom
-ENGINE_AUDIO_SHUTDOWN
-; Wait for VBlank (vertical blanking interval)
-; VRAM, OAM, and LCD control registers are unsafe to  
-; modify while the LCD is actively drawing scanlines.
-ENGINE_LCD_VBLANK_WAIT
-; Disable the LCD controller.
-; This immediately halts rendering and allows unrestricted
-; access to VRAM and OAM memory.
-; Turning off outside of VBlank can permanently damage original gameboy hardware
-ENGINE_LCD_MODE fENGINE_LCD_MODE_BASE_OFF
-; Load defafault pallet : Default to DMG and upgrade if CGB is supported
-ENGINE_GRAPHICS_PALLET_DMG_DEFAULT
-ENGINE_SYSTEM_TYPE_IF_CGB .pallet_end
-ENGINE_GRAPHICS_PALLET_CGB_SET Palette_Red
-.pallet_end
-; Set tileset | tilemap
-ENGINE_GRAPHICS_TILESET_LOAD TilesetStart_HelloWorld, TilesetEnd_HelloWorld, cENGINE_GRAPHICS_TILESET1, Engine_Memory_Copy
-ENGINE_GRAPHICS_TILEMAP_LOAD TilemapStart_HelloWorld, TilemapEnd_HelloWorld, cENGINE_GRAPHICS_TILEMAP0, Engine_Memory_Copy
-; Turn the LCD controller back on
-; At this point:
-; - Palette is set
-; - Tiles are in VRAM
-; - Tilemap is configured
-ENGINE_LCD_MODE fENGINE_LCD_MODE_BASE_BG_SIGNED
-
+   ; Set stack pointer to top of WRAM
+   iENGINE_MEMORY_STACK_POINTER_SET
+   ; Store system type
+   iENGINE_SYSTEM_TYPE_STORE
+   ; Turn off audio to prevent "Screech of Death" when first loading up rom
+   iENGINE_AUDIO_SHUTDOWN
+   ; Begin input
+   iENGINE_INPUT_BEGIN
+   ; Wait for VBlank (vertical blanking interval)
+   ; VRAM, OAM, and LCD control registers are unsafe to  
+   ; modify while the LCD is actively drawing scanlines.
+   iENGINE_LCD_VBLANK_WAIT
+   ; Disable the LCD controller.
+   ; This immediately halts rendering and allows unrestricted
+   ; access to VRAM and OAM memory.
+   ; Turning off outside of VBlank can permanently damage original gameboy hardware
+   iENGINE_LCD_MODE fENGINE_LCD_MODE_BASE_OFF
+   ; Load defafault pallet : Default to DMG and upgrade if CGB is supported
+   iENGINE_GRAPHICS_PALLET_DMG_DEFAULT
+   iENGINE_SYSTEM_TYPE_IF_CGB .pallet_end
+   iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Red
+   .pallet_end
+   ; Set tileset | tilemap
+   iENGINE_GRAPHICS_TILESET_LOAD TilesetStart_HelloWorld, TilesetEnd_HelloWorld, cENGINE_GRAPHICS_TILESET1, Engine_Memory_Copy
+   iENGINE_GRAPHICS_TILEMAP_LOAD TilemapStart_HelloWorld, TilemapEnd_HelloWorld, cENGINE_GRAPHICS_TILEMAP0, Engine_Memory_Copy
+   ; Turn the LCD controller back on
+   ; At this point:
+   ; - Palette is set
+   ; - Tiles are in VRAM
+   ; - Tilemap is configured
+   iENGINE_LCD_MODE fENGINE_LCD_MODE_BASE_BG_SIGNED
+   ; Turn on audio
+   iENGINE_AUDIO_STARTUP
+   
+; Update
 Update:
-ENGINE_LCD_VBLANK_WAIT
-; Read input
-; Update game state
-; Write tileset data to VRAM
-; Write tilemap data to VRAM
-; Write OAM / sprite updates
-ENGINE_LCD_VBLANK_END
-jp Update
+   iENGINE_LCD_VBLANK_WAIT
+   ; Input update
+   iENGINE_INPUT_UPDATE
+   iENGINE_INPUT_AXIS_IF [wEngineInputPressed], .input_up, .input_down, .input_left, .input_right, .input_none
+   .input_up:
+      iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Yellow
+      jr .input_none
+   .input_down:
+      iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Pink
+      jr .input_none
+   .input_left:
+      iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Blue
+      jr .input_none
+   .input_right:
+      iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Green
+   .input_none:
+   ; Update game state
+   ; Write tileset data to VRAM
+   ; Write tilemap data to VRAM
+   ; Write OAM / sprite updates
+   iENGINE_LCD_VBLANK_END
+   jp Update
 
 SECTION "data_game", ROM0
 
 Palette_Red:
-ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 26,16,16, 18,4,4, 0,0,0
+dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 26,16,16, 18,4,4, 0,0,0
 Palette_Green:
-ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 18,24,16, 6,14,6, 0,0,0
+dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 18,24,16, 6,14,6, 0,0,0
 Palette_Blue:
-ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 16,18,26, 4,6,18, 0,0,0
+dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 16,18,26, 4,6,18, 0,0,0
 Palette_Yellow:
-ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,24,10, 20,14,2, 0,0,0
+dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,24,10, 20,14,2, 0,0,0
 Palette_Purple:
-ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 22,16,24, 12,4,14, 0,0,0
+dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 22,16,24, 12,4,14, 0,0,0
 Palette_Orange:
-ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,8, 20,8,2, 0,0,0
+dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,8, 20,8,2, 0,0,0
 Palette_Pink:
-ENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,22, 20,8,12, 0,0,0
+dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,22, 20,8,12, 0,0,0
     
 TilesetStart_HelloWorld:
 dw `22222222, `22222222, `22222222, `22222222, `22222222, `22222222, `22222222, `22222222 ; $00
