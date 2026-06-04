@@ -30,7 +30,7 @@ DEF _rNR13                                      EQU $FF13 ; CH1 Frequency Lo
 DEF _rNR14                                      EQU $FF14 ; CH1 Frequency Hi
 DEF _rNR50                                      EQU $FF24 ; Master Volume/Panning
 DEF _rNR51                                      EQU $FF25 ; Sound Pan Enable
-DEF _rNR52                                      EQU $FF26 ; Sound Master Control/Status (APU Power & Channel Activity)
+DEF _rNR52                                      EQU $FF26 ; Sound On/Off
 
 ; iENGINE_AUDIO_STARTUP
 ; - Destroys: Registers A

@@ -28,6 +28,7 @@
 
 ; Constants
 DEF cENGINE_MEMORY_STACK_TOP               EQU $E000 ; Default stack pointer top
+DEF cENGINE_MEMORY_HRAM_START              EQU $FF80 ; Start of high speed ram
 
 ; iENGINE_MEMORY_STACK_POINTER_SET
 ; - Destroys: Registers SP
@@ -42,18 +43,29 @@ ENDC
 ENDM
 
 ; iENGINE_MEMORY_COPY_SUBROUTINE
-; - Destroys: Registers A, B, C, D, E, and Flags
+; - Source: https://gbdev.io/gb-asm-tutorial/part2/functions.html
+; - Source modified: Added offset support
+; - Destroys: Registers A, B, C, D, E, HRAM($FF80)
 ; - Usage: call Engine_Memory_Copy
-; - Description: Copies a block of memory from DE to HL. 
+; - Description: Copies a block of memory from DE to HL.
 ;   Requires length in BC.
 MACRO iENGINE_MEMORY_COPY_SUBROUTINE
 Engine_Memory_Copy:
+ldh [cENGINE_MEMORY_HRAM_START], a
+Engine_Memory_Copy_Loop:
 ld a, [de]
+; Offset
+push bc
+ld b, a
+ldh a, [cENGINE_MEMORY_HRAM_START]
+add a, b
+pop bc
+;
 ld [hli], a
 inc de
 dec bc
 ld a, b
-or c
-jr nz, Engine_Memory_Copy
+or a, c
+jr nz, Engine_Memory_Copy_Loop
 ret
 ENDM
