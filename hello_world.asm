@@ -11,15 +11,19 @@ INCLUDE "engine_lcd.inc"
 INCLUDE "engine_memory.inc"
 INCLUDE "engine_system.inc"
 
-; Section: Work ram
+; Work ram
 sENGINE_SYSTEM_WRAM
 sENGINE_INPUT_WRAM
+SECTION "game_wram", WRAM0
+wScrollY::ds 1
+wPaletteBackgroundIndex::ds 1
 
 ; Header
 sENGINE_SYSTEM_HEADER_CGB
 
 ; Subroutines
-iENGINE_GRAPHICS_PALLET_CGB_SET_SUBROUTINE
+iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE
+iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE
 iENGINE_MEMORY_COPY_SUBROUTINE
 
 ; Begin
@@ -41,11 +45,15 @@ Begin:
    ; access to VRAM and OAM memory.
    ; Turning off outside of VBlank can permanently damage original gameboy hardware
    iENGINE_LCD_MODE fENGINE_LCD_MODE_BASE_OFF
-   ; Load defafault pallet : Default to DMG and upgrade if CGB is supported
-   iENGINE_GRAPHICS_PALLET_DMG_DEFAULT
-   iENGINE_SYSTEM_TYPE_IF_CGB .pallet_end
-   iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Red
-   .pallet_end
+   ; Load defafault palettes : Default to DMG and upgrade if CGB is supported
+   iENGINE_GRAPHICS_PALETTE_DMG_DEFAULT
+   iENGINE_SYSTEM_TYPE_IF_CGB .palette_end
+   iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_CLEAR
+   iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET Palette_Red
+   iENGINE_GRAPHICS_PALETTE_OAM_CGB_CLEAR
+   iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET Palette_Blue, cENGINE_GRAPHICS_PALETTE_0_OFFSET
+   iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET Palette_Orange, cENGINE_GRAPHICS_PALETTE_1_OFFSET
+   .palette_end
    ; Set tileset/map (Background)
    ; The tileset is loaded into the $8800 memory block (Signed Mode). 
    ; Since our raw tilemap data is 0-indexed, we must apply the signed 
@@ -54,60 +62,92 @@ Begin:
    iENGINE_GRAPHICS_TILESET_LOAD dTilesetStart_Background_HelloWorld, dTilesetEnd_Background_HelloWorld, cENGINE_GRAPHICS_TILESET1, Engine_Memory_Copy
    iENGINE_GRAPHICS_TILEMAP_LOAD dTilemapStart_Background_HelloWorld, dTilemapEnd_Background_HelloWorld, cENGINE_GRAPHICS_TILEMAP0, Engine_Memory_Copy, cENGINE_GRAPHICS_TILEMAP_SIGNED_OFFSET
    ; Set tileset/map (Objects)
-   ; iENGINE_GRAPHICS_TILESET_LOAD dTilesetStart_Objects_HelloWorld, dTilesetEnd_Objects_HelloWorld, cENGINE_GRAPHICS_TILESET0, Engine_Memory_Copy
+   iENGINE_GRAPHICS_TILESET_LOAD dTilesetStart_Objects_HelloWorld, dTilesetEnd_Objects_HelloWorld, cENGINE_GRAPHICS_TILESET0, Engine_Memory_Copy
    ; Turn the LCD controller back on
    ; At this point:
    ; - Palette is set
    ; - Tiles are in VRAM
    ; - Tilemap is configured
-   iENGINE_LCD_MODE fENGINE_LCD_MODE_BASE_BG_SIGNED
+   iENGINE_LCD_MODE fENGINE_LCD_MODE_BASE_BG_SPRITE_SIGNED
    ; Turn on audio
    iENGINE_AUDIO_STARTUP
-   
+   ; Initalize game data
+   ld a, 0
+   ld [wScrollY], a
+   ld [wPaletteBackgroundIndex], a
+
 ; Update
 Update:
-   iENGINE_LCD_VBLANK_WAIT
-   ; Input update
-   iENGINE_INPUT_UPDATE
-   iENGINE_INPUT_AXIS_IF [wEngineInputPressed], .input_up, .input_down, .input_left, .input_right, .input_none
-   .input_up:
-      iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Yellow
-      jr .input_none
-   .input_down:
-      iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Pink
-      jr .input_none
-   .input_left:
-      iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Blue
-      jr .input_none
-   .input_right:
-      iENGINE_GRAPHICS_PALLET_CGB_SET Palette_Green
-   .input_none:
+
+   
    ; Update game state
-   ; Write tileset data to VRAM
-   ; Write tilemap data to VRAM
+   ; --> Entity logic, physics, collision, and camera movement happen here.
+   ; --> Construct your sprite data and write it to the Shadow OAM buffer in standard WRAM here.
+   ; --> Do NOT write directly to the hardware OAM ($FE00) during this phase.
+   iENGINE_INPUT_UPDATE
+   iENGINE_MEMORY_ADD_HL wScrollY, -1
+
+   iENGINE_LCD_VBLANK_WAIT
+   ; --> Safe to write to palette in VRAM
+   ; --> Safe to load new dynamic tiles into memory ($8000-$97FF) here.
+   ; --> Safe to update Background/Window maps ($9800-$9FFF) here.
+   ; --> Execute your hardware DMA transfer here to blast the Shadow OAM buffer into $FE00.
+   ; --> Safe to push hardware register updates (like background scrolls) here.
+
+   ; Select pallet
+   iENGINE_INPUT_BUTTON_IF wEngineInputPressed, fENGINE_INPUT_BUTTON_SELECT, .input_none
+   ; Set pallet index clamped 0-7 and get current palette adress offset, 8 bytes per palette
+   ld a, [wPaletteBackgroundIndex]
+   inc a
+   cp a, 7
+   jr c, .select_pallet_index_ok          
+   xor a
+   .select_pallet_index_ok
+   ld [wPaletteBackgroundIndex], a
+   add a, a             ; Multiply by 2
+   add a, a             ; Multiply by 4
+   add a, a             ; Multiply by 8
+   ; Get pallet adress
+   ld l, a              ; Put the 8-bit offset into L
+   ld h, 0              ; Clear H
+   ld bc, Palette_Red   ; Load the base address into BC
+   add hl, bc           ; Add the offset to the base address
+   ;
+   ld a, $80            ; target pallet 0
+   call Engine_Graphics_Palette_Background_CGB_Set
+   .input_none:
+   
+
    ; Write OAM / sprite updates
+   ; We do not need and should not to do this each frame but its here for simplicity (Only write when object data should change)
+   iENGINE_GRAPHICS_OAM_SINGLE_SET_FULL_DYNAMIC 0, 16, 6, 1
+   iENGINE_GRAPHICS_OAM_SINGLE_SET_FULL_DYNAMIC 1, 40, 80, 5, fENGINE_GRAPHICS_OAM_X_FLIP | fENGINE_GRAPHICS_OAM_Y_FLIP
+   iENGINE_GRAPHICS_OAM_SINGLE_SET_POSITION 1, 50, 90
+   iENGINE_GRAPHICS_OAM_SINGLE_SET_TILE_INDEX 1, 3
+   iENGINE_GRAPHICS_SCROLL_Y_SET wScrollY
+
    iENGINE_LCD_VBLANK_END
    jp Update
 
 SECTION "data_game", ROM0
 
 Palette_Red:
-dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 26,16,16, 18,4,4, 0,0,0
+dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 26,16,16, 18,4,4, 0,0,0
 Palette_Green:
-dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 18,24,16, 6,14,6, 0,0,0
+dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 18,24,16, 6,14,6, 0,0,0
 Palette_Blue:
-dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 16,18,26, 4,6,18, 0,0,0
+dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 16,18,26, 4,6,18, 0,0,0
 Palette_Yellow:
-dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,24,10, 20,14,2, 0,0,0
+dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 28,24,10, 20,14,2, 0,0,0
 Palette_Purple:
-dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 22,16,24, 12,4,14, 0,0,0
+dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 22,16,24, 12,4,14, 0,0,0
 Palette_Orange:
-dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,8, 20,8,2, 0,0,0
+dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 28,18,8, 20,8,2, 0,0,0
 Palette_Pink:
-dENGINE_GRAPHICS_PALLET_DATA 30,28,26, 28,18,22, 20,8,12, 0,0,0
+dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 28,18,22, 20,8,12, 0,0,0
  
 ; Source: https://gbdev.io/rgbds-live/
-; Original $00 becomes $80, $01 becomes $81, etc.
+; Modified: To scroll on y properly
 dTilemapStart_Background_HelloWorld:
 db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
@@ -124,6 +164,20 @@ db $00, $00, $1e, $3d, $3e, $3f, $22, $27, $21, $1f, $20, $21, $22, $25, $1e, $2
 db $00, $00, $00, $41, $42, $43, $44, $30, $33, $41, $45, $43, $41, $30, $43, $41, $30, $33, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $01, $02, $03, $01, $04, $03, $01, $05, $00, $01, $05, $00, $06, $04, $07, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $08, $09, $0a, $0b, $0c, $0d, $0b, $0e, $0f, $08, $0e, $0f, $10, $11, $12, $13, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $14, $15, $16, $17, $18, $19, $1a, $1b, $0f, $14, $1b, $0f, $14, $1c, $16, $1d, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $1e, $1f, $20, $21, $22, $23, $24, $22, $25, $1e, $22, $25, $26, $22, $27, $1d, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $01, $28, $29, $2a, $2b, $2c, $2d, $2b, $2e, $2d, $2f, $30, $2d, $31, $32, $33, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $08, $34, $0a, $0b, $11, $0a, $0b, $35, $36, $0b, $0e, $0f, $08, $37, $0a, $38, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $14, $39, $16, $17, $1c, $16, $17, $3a, $3b, $17, $1b, $0f, $14, $3c, $16, $1d, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $1e, $3d, $3e, $3f, $22, $27, $21, $1f, $20, $21, $22, $25, $1e, $22, $40, $1d, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
+db $00, $00, $00, $41, $42, $43, $44, $30, $33, $41, $45, $43, $41, $30, $43, $41, $30, $33, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
@@ -205,9 +259,9 @@ dTilesetEnd_Background_HelloWorld:
 
 dTilesetStart_Objects_HelloWorld:
 dw `00000000, `00000000, `00000000, `00000000, `00000000, `00000000, `00000000, `00000000 ; $00
-dw `00333300, `03000030, `30300303, `30000003, `30300303, `30033003, `03000030, `00333300 ; $01
-dw `30303030, `03030303, `30303030, `03030303, `30303030, `03030303, `30303030, `03030303 ; $02
-dw `33333333, `30033003, `30033003, `33333333, `33333333, `30033003, `30033003, `33333333 ; $03
-dw `00333300, `03111130, `31222213, `31222213, `31222213, `31222213, `03111130, `00333300 ; $04
-dw `00033000, `00333300, `03300330, `33000033, `33000033, `03300330, `00333300, `00033000 ; $05
+dw `00222200, `02000020, `20200202, `20000002, `20200202, `20022002, `02000020, `00222200 ; $02
+dw `20202020, `02020202, `20202020, `02020202, `20202020, `02020202, `20202020, `02020202 ; $02
+dw `22222222, `20022002, `20022002, `22222222, `22222222, `20022002, `20022002, `22222222 ; $03
+dw `00222200, `02222220, `22222222, `22222222, `22222222, `22222222, `02222220, `00222200 ; $04
+dw `00022000, `00222200, `02200220, `22000022, `22000022, `02200220, `00222200, `00022000 ; $05
 dTilesetEnd_Objects_HelloWorld:

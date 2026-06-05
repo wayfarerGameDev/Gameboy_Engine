@@ -42,11 +42,37 @@ ld sp, cENGINE_MEMORY_STACK_TOP
 ENDC
 ENDM
 
+; iENGINE_MEMORY_ADD_A
+; - Destroys: Registers A
+; - Usage: call iENGINE_MEMORY_ADD adress, value
+; - Description: Increments memory using direct addressing. Use this when you 
+;   specifically need the resulting calculated value to remain in the A register 
+;   for immediate subsequent math or comparisons.
+;   Requires length in BC.
+MACRO iENGINE_MEMORY_ADD_A
+ld a, [\1]
+add a, \2
+ld [\1], a
+ENDM
+
+; iENGINE_MEMORY_ADD_HL
+; - Destroys: Registers A, HL
+; - Usage: iENGINE_MEMORY_ADD_HL address, value
+; - Description: Adds a value to a memory address using HL as a pointer. Use this 
+;   as your default choice, as it executes faster and uses less ROM space than 
+;   the direct method, provided you do not need to preserve the HL register.
+MACRO iENGINE_MEMORY_ADD_HL
+ld hl, \1
+ld a, [hl]
+add a, \2
+ld [hl], a
+ENDM
+
 ; iENGINE_MEMORY_COPY_SUBROUTINE
 ; - Source: https://gbdev.io/gb-asm-tutorial/part2/functions.html
 ; - Source modified: Added offset support
 ; - Destroys: Registers A, B, C, D, E, HRAM($FF80)
-; - Usage: call Engine_Memory_Copy
+; - Usage: call iENGINE_MEMORY_COPY_SUBROUTINE
 ; - Description: Copies a block of memory from DE to HL.
 ;   Requires length in BC.
 MACRO iENGINE_MEMORY_COPY_SUBROUTINE

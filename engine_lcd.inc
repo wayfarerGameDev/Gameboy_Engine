@@ -8,8 +8,7 @@
 ; ==============================================================================
 ; TODO
 ; ==============================================================================
-; [ ] Add support for window layer positioning registers.
-; [ ] Implement full palette transition support during VBlank.
+; [] Add support for window layer positioning registers.
 
 ; ==============================================================================
 ; LICENSE
@@ -27,10 +26,10 @@
 ; GNU Lesser General Public License for more details.
 
 ; Register constants
-DEF _rLY                                       EQU $FF44 ; LCD Y-Coordinate (The current scanline 0-153)
 DEF _rLCDC                                     EQU $FF40 ; LCD Control (The Master Switchboard)
+DEF _rLY                                       EQU $FF44 ; LCD Y-Coordinate (The current scanline 0-153)
 
-; LCD mode Flags
+; LCD control mode Flags
 DEF fENGINE_LCD_MODE_BASE_OFF                  EQU %00000000 ; Shutdown LCD
 DEF fENGINE_LCD_MODE_BASE_BG_SIGNED            EQU %10000001 ; Signed Mode: Use for UI protection/Large maps
 DEF fENGINE_LCD_MODE_BASE_BG_UNSIGNED          EQU %10010001 ; Unsigned Mode: Use for sharing tiles with Sprites

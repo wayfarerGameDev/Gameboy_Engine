@@ -74,19 +74,19 @@ ENDM
 
 ; iENGINE_INPUT_BUTTON_IF
 ; - Destroys: Registers A
-; - Usage: iENGINE_INPUT_BUTTON_IF [wInputState], fButtonMask, .false
-; - Usage Example: iENGINE_INPUT_BUTTON_IF [wEngineInputPressed], fENGINE_INPUT_BUTTON_A, .jump
+; - Usage: iENGINE_INPUT_BUTTON_IF wInputState, fButtonMask, .false
+; - Usage Example: iENGINE_INPUT_BUTTON_IF wEngineInputPressed, fENGINE_INPUT_BUTTON_A, .jump
 ; - Description: Checks if a specific button bit is set within the provided input state variable. 
 ;   Jumps to the specified label if the button is active.
 MACRO iENGINE_INPUT_BUTTON_IF
-ld a, \1
+ld a, [\1]
 and \2
 jr z, \3
 ENDM
 
 ; iENGINE_INPUT_AXIS_IF
 ; - Destroys: Registers A
-; - Usage: iENGINE_INPUT_AXIS_IF [wInputState], .up, .down, .left, .right, .false
+; - Usage: iENGINE_INPUT_AXIS_IF wInputState, .up, .down, .left, .right, .false
 ; - Description: Evaluates a snapshot of the input state to determine which 
 ;   directional button is active. It uses a fixed priority order (Up -> Down -> 
 ;   Left -> Right). Upon finding a match, it performs a conditional jump to the 
@@ -94,19 +94,19 @@ ENDM
 ;   executes an unconditional jump to the final label (.false).
 MACRO iENGINE_INPUT_AXIS_IF
 ; Up
-ld a, \1
+ld a, [\1]
 and fENGINE_INPUT_BUTTON_UP
 jr nz, \2
 ; Down
-ld a, \1
+ld a, [\1]
 and fENGINE_INPUT_BUTTON_DOWN
 jr nz, \3
 ; Left
-ld a, \1
+ld a, [\1]
 and fENGINE_INPUT_BUTTON_LEFT
 jr nz, \4
 ; Right
-ld a, \1
+ld a, [\1]
 and fENGINE_INPUT_BUTTON_RIGHT
 jr nz, \5
 ; False

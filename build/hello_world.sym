@@ -1,41 +1,42 @@
 SUMMARY:
-	ROM0: 2208 bytes used / 14176 free
-	WRAM0: 5 bytes used / 4091 free
+	ROM0: 2740 bytes used / 13644 free
+	WRAM0: 7 bytes used / 4089 free
 
 ROM0 bank #0:
 	EMPTY: $0000-$00ff ($0100 bytes)
-	SECTION: $0100-$0267 ($0168 bytes) ["header"]
-	         $0150 = Engine_Graphics_Pallet_CGB_Set
-	         $0156 = Engine_Graphics_Pallet_CGB_Set.loop
-	         $015d = Engine_Memory_Copy
-	         $015f = Engine_Memory_Copy_Loop
-	         $016e = Begin
-	         $0185 = Begin.vBlankWait_u1
-	         $01a5 = Begin.pallet_end
-	         $01c9 = Update.vBlankWait_u2
-	         $01c9 = Update
-	         $0231 = Update.input_up
-	         $023d = Update.input_down
-	         $0249 = Update.input_left
-	         $0255 = Update.input_right
-	         $025f = Update.input_none
-	         $025f = Update.vBlankEnd_u3
-	SECTION: $0268-$099f ($0738 bytes) ["data_game"]
-	         $0268 = Palette_Red
-	         $0270 = Palette_Green
-	         $0278 = Palette_Blue
-	         $0280 = Palette_Yellow
-	         $0288 = Palette_Purple
-	         $0290 = Palette_Orange
-	         $0298 = Palette_Pink
-	         $02a0 = dTilemapStart_Background_HelloWorld
-	         $04e0 = dTilesetStart_Background_HelloWorld
-	         $04e0 = dTilemapEnd_Background_HelloWorld
-	         $0940 = dTilesetEnd_Background_HelloWorld
-	         $0940 = dTilesetStart_Objects_HelloWorld
-	         $09a0 = dTilesetEnd_Objects_HelloWorld
-	EMPTY: $09a0-$3fff ($3660 bytes)
-	TOTAL EMPTY: $3760 bytes
+	SECTION: $0100-$02bb ($01bc bytes) ["header"]
+	         $0150 = Engine_Graphics_Palette_Background_CGB_Set
+	         $0154 = Engine_Graphics_Palette_Background_CGB_Set.loop
+	         $015b = Engine_Graphics_Palette_Oam_CGB_Set
+	         $015f = Engine_Graphics_Palette_Oam_CGB_Set.loop
+	         $0166 = Engine_Memory_Copy
+	         $0168 = Engine_Memory_Copy_Loop
+	         $0177 = Begin
+	         $018e = Begin.vBlankWait_u1
+	         $01ab = Begin.engine_graphics_pallet_background_cgb_clear_loop
+	         $01bf = Begin.engine_graphics_pallet_oam_cgb_clear_loop
+	         $01d4 = Begin.palette_end
+	         $020e = Update
+	         $0259 = Update.vBlankWait_u2
+	         $026f = Update.select_pallet_index_ok
+	         $0281 = Update.input_none
+	         $02b3 = Update.vBlankEnd_u3
+	SECTION: $02bc-$0bb3 ($08f8 bytes) ["data_game"]
+	         $02bc = Palette_Red
+	         $02c4 = Palette_Green
+	         $02cc = Palette_Blue
+	         $02d4 = Palette_Yellow
+	         $02dc = Palette_Purple
+	         $02e4 = Palette_Orange
+	         $02ec = Palette_Pink
+	         $02f4 = dTilemapStart_Background_HelloWorld
+	         $06f4 = dTilesetStart_Background_HelloWorld
+	         $06f4 = dTilemapEnd_Background_HelloWorld
+	         $0b54 = dTilesetEnd_Background_HelloWorld
+	         $0b54 = dTilesetStart_Objects_HelloWorld
+	         $0bb4 = dTilesetEnd_Objects_HelloWorld
+	EMPTY: $0bb4-$3fff ($344c bytes)
+	TOTAL EMPTY: $354c bytes
 
 WRAM0 bank #0:
 	SECTION: $c000-$c003 ($0004 bytes) ["engine_input_wram"]
@@ -43,7 +44,10 @@ WRAM0 bank #0:
 	         $c001 = wEngineInputPrevious
 	         $c002 = wEngineInputPressed
 	         $c003 = wEngineInputReleased
-	SECTION: $c004-$c004 ($0001 byte) ["engine_system_wram"]
-	         $c004 = wEngineSystemType
-	EMPTY: $c005-$cfff ($0ffb bytes)
-	TOTAL EMPTY: $0ffb bytes
+	SECTION: $c004-$c005 ($0002 bytes) ["game_wram"]
+	         $c004 = wScrollY
+	         $c005 = wPaletteBackgroundIndex
+	SECTION: $c006-$c006 ($0001 byte) ["engine_system_wram"]
+	         $c006 = wEngineSystemType
+	EMPTY: $c007-$cfff ($0ff9 bytes)
+	TOTAL EMPTY: $0ff9 bytes
