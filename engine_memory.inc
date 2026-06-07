@@ -31,8 +31,8 @@ DEF cENGINE_MEMORY_STACK_TOP               EQU $E000 ; Default stack pointer top
 DEF cENGINE_MEMORY_HRAM_START              EQU $FF80 ; Start of high speed ram
 
 ; iENGINE_MEMORY_STACK_POINTER_SET
-; - Destroys: Registers SP
 ; - Usage: iENGINE_MEMORY_STACK_POINTER_SET [$Addr]
+; - Registers: Stack Pointer -> SP
 ; - Description: Sets the stack pointer. Defaults to cENGINE_MEMORY_STACK_TOP.
 MACRO iENGINE_MEMORY_STACK_POINTER_SET
 IF _NARG > 0
@@ -42,40 +42,44 @@ ld sp, cENGINE_MEMORY_STACK_TOP
 ENDC
 ENDM
 
-; iENGINE_MEMORY_ADD_A
-; - Destroys: Registers A
-; - Usage: call iENGINE_MEMORY_ADD adress, value
-; - Description: Increments memory using direct addressing. Use this when you 
-;   specifically need the resulting calculated value to remain in the A register 
-;   for immediate subsequent math or comparisons.
-;   Requires length in BC.
-MACRO iENGINE_MEMORY_ADD_A
-ld a, [\1]
-add a, \2
+; iENGINE_MEMORY_WRITE_MULTIPLE_WRAM
+; - Usage: iENGINE_MEMORY_WRITE_MULTIPLE_WRAM value, address_1, [address_2], [address_3]...
+; - Registers: value -> A -> Address(es)
+; - Description: Loads a value into the A register and stores it into any number of provided addresses.
+MACRO iENGINE_MEMORY_WRITE_MULTIPLE_WRAM
+; load
+ld a, \1
+; store
+REPT _NARG - 1
+SHIFT
 ld [\1], a
+ENDR
 ENDM
 
-; iENGINE_MEMORY_ADD_HL
-; - Destroys: Registers A, HL
-; - Usage: iENGINE_MEMORY_ADD_HL address, value
-; - Description: Adds a value to a memory address using HL as a pointer. Use this 
-;   as your default choice, as it executes faster and uses less ROM space than 
-;   the direct method, provided you do not need to preserve the HL register.
-MACRO iENGINE_MEMORY_ADD_HL
-ld hl, \1
-ld a, [hl]
-add a, \2
-ld [hl], a
+; iENGINE_GRAPHICS_LOAD
+; - Usage: iENGINE_GRAPHICS_LOAD SourceStart, SourceEnd, Destination,[MemoryCopyOffset]
+; - Usage: iENGINE_GRAPHICS_LOAD SourceStart, SourceEnd, Destination,[MemoryCopyOffset]
+; - Registers: Destination -> HL, SourceStart -> DE, (SourceEnd - SourceStart) -> BC, Offset -> A
+; - Description: Loads source data block into VRAM.
+MACRO iENGINE_MEMORY_COPY_SUBROUTINE_CALL
+ld hl, \3
+ld de, \1
+ld bc, \2 - \1
+IF _NARG == 4
+ld a, \4
+ELSE
+ld a, 0
+ENDC
+call Engine_Memory_Copy
 ENDM
 
-; iENGINE_MEMORY_COPY_SUBROUTINE
+; iENGINE_MEMORY_COPY_SUBROUTINE_INCLUDE
 ; - Source: https://gbdev.io/gb-asm-tutorial/part2/functions.html
 ; - Source modified: Added offset support
-; - Destroys: Registers A, B, C, D, E, HRAM($FF80)
-; - Usage: call iENGINE_MEMORY_COPY_SUBROUTINE
-; - Description: Copies a block of memory from DE to HL.
-;   Requires length in BC.
-MACRO iENGINE_MEMORY_COPY_SUBROUTINE
+; - Usage: call Engine_Memory_Copy
+; - Registers: Source address -> DE, Destination address -> HL, Length -> BC, Offset -> HRAM
+; - Description: Copies a block of memory from DE to HL, applying an offset to each byte.
+MACRO iENGINE_MEMORY_COPY_SUBROUTINE_INCLUDE
 Engine_Memory_Copy:
 ldh [cENGINE_MEMORY_HRAM_START], a
 Engine_Memory_Copy_Loop:

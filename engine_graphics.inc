@@ -62,25 +62,15 @@ DEF fENGINE_GRAPHICS_OAM_PALETTE_DMG                    EQU %00010000 ; 1 = DMG 
 DEF fENGINE_GRAPHICS_OAM_PALETTE_TARGET_BACKGROUND      EQU %00000000 ; Background pallet target flag
 DEF fENGINE_GRAPHICS_OAM_PALETTE_TARGET_OAM             EQU %00000001 ; OAM pallet target flag
 
-; CGB Palette constants
-DEF cENGINE_GRAPHICS_PALETTE_0                          EQU 0
-DEF cENGINE_GRAPHICS_PALETTE_1                          EQU 1
-DEF cENGINE_GRAPHICS_PALETTE_2                          EQU 2
-DEF cENGINE_GRAPHICS_PALETTE_3                          EQU 3
-DEF cENGINE_GRAPHICS_PALETTE_4                          EQU 4
-DEF cENGINE_GRAPHICS_PALETTE_5                          EQU 5
-DEF cENGINE_GRAPHICS_PALETTE_6                          EQU 6
-DEF cENGINE_GRAPHICS_PALETTE_7                          EQU 7
-
 ; CGB Palette offset constants
-DEF cENGINE_GRAPHICS_PALETTE_0_OFFSET                   EQU 0
-DEF cENGINE_GRAPHICS_PALETTE_1_OFFSET                   EQU 8
-DEF cENGINE_GRAPHICS_PALETTE_2_OFFSET                   EQU 16
-DEF cENGINE_GRAPHICS_PALETTE_3_OFFSET                   EQU 24
-DEF cENGINE_GRAPHICS_PALETTE_4_OFFSET                   EQU 32
-DEF cENGINE_GRAPHICS_PALETTE_5_OFFSET                   EQU 40
-DEF cENGINE_GRAPHICS_PALETTE_6_OFFSET                   EQU 48
-DEF cENGINE_GRAPHICS_PALETTE_7_OFFSET                   EQU 56
+DEF cENGINE_GRAPHICS_PALETTE_ADDRESS_0                  EQU $80 + 0
+DEF cENGINE_GRAPHICS_PALETTE_ADDRESS_1                  EQU $80 + 8
+DEF cENGINE_GRAPHICS_PALETTE_ADDRESS_2                  EQU $80 + 16
+DEF cENGINE_GRAPHICS_PALETTE_ADDRESS_3                  EQU $80 + 24
+DEF cENGINE_GRAPHICS_PALETTE_ADDRESS_4                  EQU $80 + 32
+DEF cENGINE_GRAPHICS_PALETTE_ADDRESS_5                  EQU $80 + 40
+DEF cENGINE_GRAPHICS_PALETTE_ADDRESS_6                  EQU $80 + 48
+DEF cENGINE_GRAPHICS_PALETTE_ADDRESS_7                  EQU $80 + 56
 
 ; dENGINE_GRAPHICS_PALETTE_DATA
 ; - Usage: dENGINE_GRAPHICS_PALETTE_DATA R,G,B, R,G,B, R,G,B, R,G,B
@@ -93,58 +83,26 @@ dw ((\10) | (\11 << 5) | (\12 << 10)) & $7FFF
 ENDM
 
 ; iENGINE_GRAPHICS_SCROLL_X_SET
-; - Destroys: Registers A
-; - Usage: iENGINE_GRAPHICS_SCROLL_X_SET value
-; - Description: Sets x scroll register
+; - Usage: iENGINE_GRAPHICS_SCROLL_X_SET Address
+; - Registers: Adress -> A
+; - Description: Sets the horizontal scroll register (_rSCX).
 MACRO iENGINE_GRAPHICS_SCROLL_X_SET
-ld a, \1
+ld a, [\1]
 ld [_rSCX], a
 ENDM
 
-; iENGINE_GRAPHICS_SCROLL_Y_INC
-; - Destroys: Registers A
-; - Usage: iENGINE_GRAPHICS_SCROLL_Y_INC value
-; - Description: Sets y scroll register
+; iENGINE_GRAPHICS_SCROLL_Y_SET
+; - Usage: iENGINE_GRAPHICS_SCROLL_Y_SET Address
+; - Registers: Address -> A
+; - Description: Sets the vertical scroll register (_rSCY).
 MACRO iENGINE_GRAPHICS_SCROLL_Y_SET
 ld a, [\1]
 ld [_rSCY], a
 ENDM
 
-; iENGINE_GRAPHICS_TILESET_LOAD
-; - Destroys: Registers A, C,  HL, DE, BC
-; - Usage: iENGINE_GRAPHICS_TILESET_LOAD SourceStart, SourceEnd, Destination, MemoryCopyRoutine, MemoryCopyOffset[Optinal]
-; - Description: Loads a tileset block into VRAM.
-MACRO iENGINE_GRAPHICS_TILESET_LOAD
-ld hl, \3
-ld de, \1
-ld bc, \2 - \1
-IF _NARG == 5
-ld a, \5
-ELSE
-ld a, 0
-ENDC
-call \4
-ENDM
-
-; iENGINE_GRAPHICS_TILEMAP_LOAD
-; - Destroys: Registers A, HL, DE, BC
-; - Usage: iENGINE_GRAPHICS_TILEMAP_LOAD SourceStart, SourceEnd, Destination, MemoryCopyRoutine, MemoryCopyOffset[Optinal]
-; - Description: Loads a tilemap block into VRAM.
-MACRO iENGINE_GRAPHICS_TILEMAP_LOAD
-ld hl, \3
-ld de, \1 
-ld bc, \2 - \1
-IF _NARG == 5
-ld a, \5
-ELSE
-ld a, 0
-ENDC
-call \4
-ENDM
-
 ; iENGINE_GRAPHICS_PALETTE_DMG_DEFAULT
-; - Destroys: Registers A
 ; - Usage: iENGINE_GRAPHICS_PALETTE_DMG_DEFAULT
+; - Registers: Default palette value -> A
 ; - Description: Sets the default DMG background palette.
 MACRO iENGINE_GRAPHICS_PALETTE_DMG_DEFAULT
 ld a, _cENGINE_GRAPHICS_PALETTE_DEFAULT
@@ -152,100 +110,122 @@ ldh [_rBGP], a
 ENDM
 
 ; iENGINE_GRAPHICS_PALETTE_OAM_CGB_CLEAR
-; - Destroys: Registers A, C, Flags
-; - Usage: iENGINE_GRAPHICS_PALETTE_OAM_CGB_CLEAR
-; - Description: Clears all CGB OAM palette data to zero.
+; - Usage: iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_CLEAR
+; - Registers: Index/Auto-inc -> A, Count -> C
+; - Description: Clears all CGB background palette data to zero.
 MACRO iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_CLEAR
 ld a, $80          ; Start at Index 0 with auto-increment
 ldh [_rBCPS], a
 ld c, 64           ; Clear 64 bytes
 xor a              ; A = 0
-.engine_graphics_pallet_background_cgb_clear_loop:
+.loop\@:
 ldh [_rBCPD], a
 dec c
-jr nz, .engine_graphics_pallet_background_cgb_clear_loop
+jr nz, .loop\@
 ENDM
 
-; iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET
-; - Destroys: Registers A, HL
-; - Usage: iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET DataPointer
-; - Description: Sets CGB background palette.
-MACRO iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET
-ld hl, \1
-IF _NARG == 1
-ld a, $80
-ELSE
-ld a, $80 + \2
-ENDC
-call Engine_Graphics_Palette_Background_CGB_Set
-ENDM
-
-; iENGINE_GRAPHICS_PALETTE_CGB_SET_BACKGROUND_SUBROUTINE
-; - Input: Registers A, HL
-; - Destroys: Registers A, B, HL, Flags
+; iENGINE_GRAPHICS_PALETTE_CGB_SET_BACKGROUND_SUBROUTINE_INCLUDE
 ; - Usage: call Engine_Graphics_Palette_Background_CGB_Set
-; - Description: Subroutine to load palette data from HL to CGB background palette RAM.
-MACRO iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE
+; - Registers: PaletteAddress -> A, PaletteAddress -> HL
+; - Description: Adds "Engine_Graphics_Palette_Background_CGB_Set" subroutine
+MACRO iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE_INCLUDE
 Engine_Graphics_Palette_Background_CGB_Set:
 ldh [_rBCPS], a
 ld b, 8            ; A palette is 8 bytes (4 colors * 2 bytes)
-.loop:
+.loop\@:
 ld a, [hli]        ; Get byte from data
 ldh [_rBCPD], a    ; Write to palette RAM
 dec b
-jr nz, .loop
+jr nz, .loop\@
 ret
 ENDM
 
+; iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE_CALL
+; - Usage: iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE_CALL PaletteAddress, SourceAddress, [SourceAddressOffset]
+; - Registers: PaletteAddress -> A, SourceAddress -> HL
+; - Description: Sets CGB background palette via calling "Engine_Graphics_Palette_Background_CGB_Set" subroutine.
+MACRO iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE_CALL
+; SourceAddress
+ld hl, \2
+; SourceAddress (offseted 16bit) a
+IF _NARG == 3
+IF STRCMP("\3", "a") == 0
+ld e, a
+ld d, 0
+add hl, de
+; SourceAddress (offseted 16bit) b
+ELSE
+ld a, [\3]
+ld e, a
+ld d, 0
+add hl, de
+ENDC
+ENDC
+; Palette address
+ld a, \1
+call Engine_Graphics_Palette_Background_CGB_Set
+ENDM
+
 ; iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_CLEAR
-; - Destroys: Registers A, C, Flags
-; - Usage: iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_CLEAR
-; - Description: Clears all CGB background palette data to zero.
+; - Usage: iENGINE_GRAPHICS_PALETTE_OAM_CGB_CLEAR
+; - Registers: Index/Auto-inc -> A, Count -> C
+; - Description: Clears all CGB OAM palette data to zero.
 MACRO iENGINE_GRAPHICS_PALETTE_OAM_CGB_CLEAR
 ld a, $80          ; Start at Index 0 with auto-increment
 ldh [_rOCPS], a
 ld c, 64           ; Clear 64 bytes
 xor a              ; A = 0
-.engine_graphics_pallet_oam_cgb_clear_loop:
+.loop\@:
 ldh [_rOCPD], a
 dec c
-jr nz, .engine_graphics_pallet_oam_cgb_clear_loop
+jr nz, .loop\@
 ENDM
 
-; iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET
-; - Destroys: Registers A, HL
-; - Usage: iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET DataPointer
-; - Description: Sets CGB OAM palette.
-MACRO iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET
-ld hl, \1
-IF _NARG == 1
-ld a, $80
+; iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE_CALL
+; - Usage: iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE_CALL PaletteAddress, SourceAddress, [SourceAddressOffset]
+; - Registers: PaletteAddress -> A, SourceAddress -> HL
+; - Description: Sets CGB OAM palette via calling "Engine_Graphics_Palette_Oam_CGB_Set" subroutine
+MACRO iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE_CALL
+; SourceAddress
+ld hl, \2
+; SourceAddress (offseted 16bit) a
+IF _NARG == 3
+IF STRCMP("\3", "a") == 0
+ld e, a
+ld d, 0
+add hl, de
+; SourceAddress (offseted 16bit) address
 ELSE
-ld a, $80 + \2
+ld a, [\3]
+ld e, a
+ld d, 0
+add hl, de
 ENDC
+ENDC
+; Palette adress
+ld a, \1
 call Engine_Graphics_Palette_Oam_CGB_Set
 ENDM
 
 ; iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE
-; - Input: Registers A, HL
-; - Destroys: Registers A, B, HL, Flags
 ; - Usage: call Engine_Graphics_Palette_Oam_CGB_Set
+; - Registers: PaletteAddress -> A, SourceAddress -> HL
 ; - Description: Subroutine to load palette data from HL to CGB oam palette RAM.
-MACRO iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE
+MACRO iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE_INCLUDE
 Engine_Graphics_Palette_Oam_CGB_Set:
 ldh [_rOCPS], a
 ld b, 8            ; A palette is 8 bytes (4 colors * 2 bytes)
-.loop:
+.loop\@:
 ld a, [hli]        ; Get byte from data
 ldh [_rOCPD], a    ; Write to palette RAM
 dec b
-jr nz, .loop
+jr nz, .loop\@
 ret
 ENDM
 
 ; iENGINE_GRAPHICS_OAM_SINGLE_SET_FULL_DYNAMIC
-; - Destroys: Registers A, HL
 ; - Usage: iENGINE_GRAPHICS_OAM_SINGLE_SET_FULL_DYNAMIC OamIndex, Y, X, [TileIndex], [AttributeFlags]
+; - Registers: Memory destination -> HL, Y/X/Tile/Attr -> A
 ; - Description: Sets OAM data
 MACRO iENGINE_GRAPHICS_OAM_SINGLE_SET_FULL_DYNAMIC
 ; Calculate memory destination
@@ -273,8 +253,8 @@ ENDC
 ENDM
 
 ; iENGINE_GRAPHICS_OAM_SINGLE_SET_POSITION
-; - Destroys: Registers A, HL
 ; - Usage: iENGINE_GRAPHICS_OAM_SINGLE_SET_POSITION OamIndex, Y, X
+; - Registers: Memory destination -> HL, Y/X -> A
 ; - Description: Sets OAM data yx
 MACRO iENGINE_GRAPHICS_OAM_SINGLE_SET_POSITION
 ; Calculate memory destination
@@ -286,8 +266,8 @@ ld [hl+], a
 ENDM
 
 ; iENGINE_GRAPHICS_OAM_SINGLE_SET_TILE_INDEX
-; - Destroys: Registers A, HL
 ; - Usage: iENGINE_GRAPHICS_OAM_SINGLE_SET_TILE_INDEX OamIndex, TileIndex
+; - Registers: Memory destination -> HL, TileIndex -> A
 ; - Description: Sets OAM data tile index
 MACRO iENGINE_GRAPHICS_OAM_SINGLE_SET_TILE_INDEX
 ld hl, cENGINE_GRAPHICS_OAM_START + (\1 * 4) + 2
@@ -296,8 +276,8 @@ ld [hl], a
 ENDM
 
 ; iENGINE_GRAPHICS_OAM_SINGLE_SET_ATTRIBUTES
-; - Destroys: Registers A, HL
 ; - Usage: iENGINE_GRAPHICS_OAM_SINGLE_SET_ATTRIBUTES OamIndex, AttributeFlags
+; - Registers: Memory destination -> HL, AttributeFlags -> A
 ; - Description: Sets OAM data attribute flags
 MACRO iENGINE_GRAPHICS_OAM_SINGLE_SET_ATTRIBUTES
 ld hl, cENGINE_GRAPHICS_OAM_START + (\1 * 4) + 3

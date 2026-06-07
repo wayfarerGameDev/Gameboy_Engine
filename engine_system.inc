@@ -1,17 +1,4 @@
 ; ==============================================================================
-; MODULE DESCRIPTION
-; ==============================================================================
-; Provides core system initialization, ROM header configuration, and 
-; hardware identification logic. This module manages system state and 
-; provides branching tools for platform-specific (DMG/CGB) logic.
-
-; ==============================================================================
-; TODO
-; ==============================================================================
-; [ ] Implement full header padding including title and checksum calculations.
-; [ ] Add interrupt vector initialization.
-
-; ==============================================================================
 ; LICENSE
 ; ==============================================================================
 ; Copyright (c) 2026 [Nicholas Gennady Korta]. All rights reserved.
@@ -26,28 +13,23 @@
 ; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 ; GNU Lesser General Public License for more details.
 
-; sENGINE_SYSTEM_WRAM
-; - Usage: sENGINE_SYSTEM_WRAM
-; - Description: Declares the "engine_system_wram" section in WRAM0.
+; System variables (WRAM)
 MACRO sENGINE_SYSTEM_WRAM
 SECTION "engine_system_wram", WRAM0
 wEngineSystemType:: ds 1
 ENDM
 
-; sENGINE_SYSTEM_HEADER_DMG
-; - Usage: sENGINE_SYSTEM_HEADER_DMG [EntryLabel]
-; - Description: Configures the DMG-only ROM header. Defaults to "Begin".
-MACRO sENGINE_SYSTEM_HEADER_DMG
+; Header
+; Does not check hardware, DMG is set by default
+; The Game Boy CPU begins execution at address $0100 after boot ROM finishes.
+; Usage: ENGINE_HEADER Label
+MACRO ENGINE_SYSTEM_HEADER_DMG
 SECTION "header", ROM0[$100]
-IF _NARG == 0
-jp Begin
-ELSE
 jp \1
-ENDC
-; Set CGB Flag address to 0 to stay in DMG mode
+; Set CGB Flag adress to 0 to stay in DMG mode
 ds $143 - @, 0
 db $00
-; Pad remaining header area ($144-$14F)
+; Pad remaining header area ($144-$14F) to reach the start of code at $150
 ds $150 - @, 0
 ENDM
 
@@ -86,16 +68,16 @@ ds $150 - @, 0
 ENDM
 
 ; iENGINE_SYSTEM_TYPE_STORE
-; - Destroys: Registers A
 ; - Usage: iENGINE_SYSTEM_TYPE_STORE
+; - Registers: System type -> A
 ; - Description: Persists the system hardware type into WRAM.
 MACRO iENGINE_SYSTEM_TYPE_STORE
 ld [wEngineSystemType], a
 ENDM
 
 ; iENGINE_SYSTEM_TYPE_IF_CGB
-; - Destroys: Registers A
-; - Usage: iENGINE_SYSTEM_TYPE_IF_CGB .label
+; - Usage: iENGINE_SYSTEM_TYPE_IF_CGB TargetLabel
+; - Registers: System type -> A
 ; - Description: Conditional jump to label if system is NOT CGB hardware.
 MACRO iENGINE_SYSTEM_TYPE_IF_CGB
 ld a, [wEngineSystemType]
@@ -104,8 +86,8 @@ jp nz, \1
 ENDM
 
 ; iENGINE_SYSTEM_TYPE_IF_DMG
-; - Destroys: Registers A
-; - Usage: iENGINE_SYSTEM_TYPE_IF_DMG .label
+; - Usage: iENGINE_SYSTEM_TYPE_IF_DMG TargetLabel
+; - Registers: System type -> A
 ; - Description: Conditional jump to label if system is NOT DMG hardware.
 MACRO iENGINE_SYSTEM_TYPE_IF_DMG
 ld a, [wEngineSystemType]

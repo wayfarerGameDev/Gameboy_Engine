@@ -41,32 +41,32 @@ DEF fENGINE_LCD_MODE_MODIFIER_MAP1             EQU %00001000 ; Bit 3 controls cu
 DEF cENGINE_LCD_VBLANK                         EQU 144  ; V-Blank begins at scanline 144
 
 ; iENGINE_LCD_VBLANK_WAIT
-; - Destroys: Registers A
 ; - Usage: iENGINE_LCD_VBLANK_WAIT
+; - Registers: _rLY -> A
 ; - Description: Loops until the LCD enters the vertical blanking period.
 MACRO iENGINE_LCD_VBLANK_WAIT
-.vBlankWait\@
+.vBlankWait\@:
 ldh a, [_rLY]
 cp cENGINE_LCD_VBLANK
 jr c, .vBlankWait\@
 ENDM
 
 ; iENGINE_LCD_VBLANK_END
-; - Destroys: Registers A
 ; - Usage: iENGINE_LCD_VBLANK_END
+; - Registers: _rLY -> A
 ; - Description: Loops until the LCD exits the vertical blanking period.
 MACRO iENGINE_LCD_VBLANK_END
-.vBlankEnd\@
+.vBlankEnd\@:
 ldh a, [_rLY]
 cp cENGINE_LCD_VBLANK
 jr nc, .vBlankEnd\@
 ENDM
 
 ; iENGINE_LCD_MODE
-; - Destroys: Registers A
-; - Usage: iENGINE_LCD_MODE [ModeFlag]
+; - Usage: iENGINE_LCD_MODE ModeFlag
+; - Registers: ModeFlag -> A
 ; - Description: Updates the LCD control register to the specified display mode.
 MACRO iENGINE_LCD_MODE
-ld A, \1
-ldh [_rLCDC], A
+ld a, \1
+ldh [_rLCDC], a
 ENDM

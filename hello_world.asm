@@ -1,13 +1,13 @@
 ; ==============================================================================
 ; HELLO WORLD DEMONSTRATION
 ; ==============================================================================
-; A basic implementation showing engine initialization, palette swapping, 
-; and input handling.
+; A basic implementation showing core engine features
 
 INCLUDE "engine_audio.inc"
 INCLUDE "engine_graphics.inc"
 INCLUDE "engine_input.inc"
 INCLUDE "engine_lcd.inc"
+INCLUDE "engine_math.inc"
 INCLUDE "engine_memory.inc"
 INCLUDE "engine_system.inc"
 
@@ -16,15 +16,17 @@ sENGINE_SYSTEM_WRAM
 sENGINE_INPUT_WRAM
 SECTION "game_wram", WRAM0
 wScrollY::ds 1
-wPaletteBackgroundIndex::ds 1
+wSourcePaletteBackgroundIndex::ds 1
+
+SECTION "game_core", ROM0
 
 ; Header
 sENGINE_SYSTEM_HEADER_CGB
 
-; Subroutines
-iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE
-iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE
-iENGINE_MEMORY_COPY_SUBROUTINE
+; Include subroutines
+iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE_INCLUDE
+iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE_INCLUDE
+iENGINE_MEMORY_COPY_SUBROUTINE_INCLUDE
 
 ; Begin
 Begin:
@@ -49,20 +51,17 @@ Begin:
    iENGINE_GRAPHICS_PALETTE_DMG_DEFAULT
    iENGINE_SYSTEM_TYPE_IF_CGB .palette_end
    iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_CLEAR
-   iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET Palette_Red
+   iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE_CALL cENGINE_GRAPHICS_PALETTE_ADDRESS_0, Palette_Red
    iENGINE_GRAPHICS_PALETTE_OAM_CGB_CLEAR
-   iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET Palette_Blue, cENGINE_GRAPHICS_PALETTE_0_OFFSET
-   iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET Palette_Orange, cENGINE_GRAPHICS_PALETTE_1_OFFSET
+   iENGINE_GRAPHICS_PALETTE_OAM_CGB_CLEAR
+   iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE_CALL cENGINE_GRAPHICS_PALETTE_ADDRESS_0, Palette_Blue
+   iENGINE_GRAPHICS_PALETTE_OAM_CGB_SET_SUBROUTINE_CALL cENGINE_GRAPHICS_PALETTE_ADDRESS_1, Palette_Orange
    .palette_end
    ; Set tileset/map (Background)
-   ; The tileset is loaded into the $8800 memory block (Signed Mode). 
-   ; Since our raw tilemap data is 0-indexed, we must apply the signed 
-   ; offset ($80) so the hardware correctly points to the tiles at 
-   ; $8800 rather than looking for them at $9000.
-   iENGINE_GRAPHICS_TILESET_LOAD dTilesetStart_Background_HelloWorld, dTilesetEnd_Background_HelloWorld, cENGINE_GRAPHICS_TILESET1, Engine_Memory_Copy
-   iENGINE_GRAPHICS_TILEMAP_LOAD dTilemapStart_Background_HelloWorld, dTilemapEnd_Background_HelloWorld, cENGINE_GRAPHICS_TILEMAP0, Engine_Memory_Copy, cENGINE_GRAPHICS_TILEMAP_SIGNED_OFFSET
-   ; Set tileset/map (Objects)
-   iENGINE_GRAPHICS_TILESET_LOAD dTilesetStart_Objects_HelloWorld, dTilesetEnd_Objects_HelloWorld, cENGINE_GRAPHICS_TILESET0, Engine_Memory_Copy
+   iENGINE_MEMORY_COPY_SUBROUTINE_CALL dTilesetStart_Background_HelloWorld, dTilesetEnd_Background_HelloWorld, cENGINE_GRAPHICS_TILESET1
+   iENGINE_MEMORY_COPY_SUBROUTINE_CALL dTilemapStart_Background_HelloWorld, dTilemapEnd_Background_HelloWorld, cENGINE_GRAPHICS_TILEMAP0, cENGINE_GRAPHICS_TILEMAP_SIGNED_OFFSET
+   ; Set tileset (Objects)
+   iENGINE_MEMORY_COPY_SUBROUTINE_CALL dTilesetStart_Objects_HelloWorld, dTilesetEnd_Objects_HelloWorld, cENGINE_GRAPHICS_TILESET0
    ; Turn the LCD controller back on
    ; At this point:
    ; - Palette is set
@@ -72,20 +71,16 @@ Begin:
    ; Turn on audio
    iENGINE_AUDIO_STARTUP
    ; Initalize game data
-   ld a, 0
-   ld [wScrollY], a
-   ld [wPaletteBackgroundIndex], a
-
+   iENGINE_MEMORY_WRITE_MULTIPLE_WRAM 0, wScrollY, wSourcePaletteBackgroundIndex
 ; Update
 Update:
 
-   
    ; Update game state
    ; --> Entity logic, physics, collision, and camera movement happen here.
    ; --> Construct your sprite data and write it to the Shadow OAM buffer in standard WRAM here.
    ; --> Do NOT write directly to the hardware OAM ($FE00) during this phase.
    iENGINE_INPUT_UPDATE
-   iENGINE_MEMORY_ADD_HL wScrollY, -1
+   iENGINE_MATH_ADD_WRAM wScrollY, -1, 1, 1
 
    iENGINE_LCD_VBLANK_WAIT
    ; --> Safe to write to palette in VRAM
@@ -94,30 +89,17 @@ Update:
    ; --> Execute your hardware DMA transfer here to blast the Shadow OAM buffer into $FE00.
    ; --> Safe to push hardware register updates (like background scrolls) here.
 
-   ; Select pallet
+   ; Select palette
    iENGINE_INPUT_BUTTON_IF wEngineInputPressed, fENGINE_INPUT_BUTTON_SELECT, .input_none
-   ; Set pallet index clamped 0-7 and get current palette adress offset, 8 bytes per palette
-   ld a, [wPaletteBackgroundIndex]
-   inc a
-   cp a, 7
-   jr c, .select_pallet_index_ok          
-   xor a
-   .select_pallet_index_ok
-   ld [wPaletteBackgroundIndex], a
-   add a, a             ; Multiply by 2
-   add a, a             ; Multiply by 4
-   add a, a             ; Multiply by 8
-   ; Get pallet adress
-   ld l, a              ; Put the 8-bit offset into L
-   ld h, 0              ; Clear H
-   ld bc, Palette_Red   ; Load the base address into BC
-   add hl, bc           ; Add the offset to the base address
-   ;
-   ld a, $80            ; target pallet 0
-   call Engine_Graphics_Palette_Background_CGB_Set
+      ; Select palette: background
+      ; Set pallet index clamped 0-7 and get current palette adress offset, 8 bytes per palette
+      ; Math writes results to 'A' register
+      iENGINE_MATH_INC_WRAM wSourcePaletteBackgroundIndex, cMATH_TRUE, cMATH_FALSE
+      iENGINE_MATH_BOUND_MAX_WRAM wSourcePaletteBackgroundIndex, 0, 6, cMATH_BOUND_MODE_WRAP,cMATH_FALSE, cMATH_TRUE
+      iENGINE_MATH_SHIFT_LEFT_WRAM 3 ; 2 4 8 (bytes)
+      iENGINE_GRAPHICS_PALETTE_BACKGROUND_CGB_SET_SUBROUTINE_CALL cENGINE_GRAPHICS_PALETTE_ADDRESS_0, Palette_Red, a
    .input_none:
    
-
    ; Write OAM / sprite updates
    ; We do not need and should not to do this each frame but its here for simplicity (Only write when object data should change)
    iENGINE_GRAPHICS_OAM_SINGLE_SET_FULL_DYNAMIC 0, 16, 6, 1
@@ -129,7 +111,7 @@ Update:
    iENGINE_LCD_VBLANK_END
    jp Update
 
-SECTION "data_game", ROM0
+SECTION "game_palettes", ROMX
 
 Palette_Red:
 dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 26,16,16, 18,4,4, 0,0,0
@@ -146,6 +128,8 @@ dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 28,18,8, 20,8,2, 0,0,0
 Palette_Pink:
 dENGINE_GRAPHICS_PALETTE_DATA 30,28,26, 28,18,22, 20,8,12, 0,0,0
  
+SECTION "game_tilemaps", ROMX
+
 ; Source: https://gbdev.io/rgbds-live/
 ; Modified: To scroll on y properly
 dTilemapStart_Background_HelloWorld:
@@ -182,6 +166,8 @@ db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $0
 db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 dTilemapEnd_Background_HelloWorld:
+
+SECTION "game_tilesets", ROMX
 
 ; Source: https://gbdev.io/rgbds-live/
 dTilesetStart_Background_HelloWorld:

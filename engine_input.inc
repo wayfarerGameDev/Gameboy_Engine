@@ -50,7 +50,7 @@ DEF fENGINE_INPUT_BUTTON_DOWN                   EQU %10000000 ; Button: Down
 
 ; sENGINE_INPUT_WRAM
 ; - Usage: sENGINE_INPUT_WRAM
-; - Description: Declares the "engine_input_wram" section in WRAM0. This 
+; - Description: Declares the "engine_input" section in WRAM0. This 
 ;   macro reserves the necessary memory addresses for the input system 
 ;   variables: current state, previous state, and the edge-triggered 
 ;   pressed/released states.
@@ -63,21 +63,18 @@ wEngineInputReleased::ds 1
 ENDM
 
 ; _iENGINE_INPUT_DELAY [Private] 
-; - Destroys: Registers A
 ; - Usage: _iENGINE_INPUT_DELAY
-; - Description: Forces a brief CPU pause to allow the hardware Joypad lines to stabilize after switching the multiplexer, as physical signal capacitance prevents an instant, reliable reading.
-; - The standard way to do this on the Game Boy is simply to read from [_rJOYP] into your accumulator (a) multiple times in a row, twice is usually the sweet spot
+; - Registers: Joypad state -> A
+; - Description: Forces a brief CPU pause to allow the hardware Joypad lines to stabilize.
 MACRO _iENGINE_INPUT_DELAY
 ld a, [_rJOYP]
 ld a, [_rJOYP]
 ENDM
 
 ; iENGINE_INPUT_BUTTON_IF
-; - Destroys: Registers A
-; - Usage: iENGINE_INPUT_BUTTON_IF wInputState, fButtonMask, .false
-; - Usage Example: iENGINE_INPUT_BUTTON_IF wEngineInputPressed, fENGINE_INPUT_BUTTON_A, .jump
-; - Description: Checks if a specific button bit is set within the provided input state variable. 
-;   Jumps to the specified label if the button is active.
+; - Usage: iENGINE_INPUT_BUTTON_IF InputStateAddress, ButtonMask, FalseLabel
+; - Registers: InputState -> A
+; - Description: Checks if a specific button bit is set. Jumps to FalseLabel if inactive.
 MACRO iENGINE_INPUT_BUTTON_IF
 ld a, [\1]
 and \2
@@ -85,13 +82,9 @@ jr z, \3
 ENDM
 
 ; iENGINE_INPUT_AXIS_IF
-; - Destroys: Registers A
-; - Usage: iENGINE_INPUT_AXIS_IF wInputState, .up, .down, .left, .right, .false
-; - Description: Evaluates a snapshot of the input state to determine which 
-;   directional button is active. It uses a fixed priority order (Up -> Down -> 
-;   Left -> Right). Upon finding a match, it performs a conditional jump to the 
-;   corresponding provided label. If no directional button is active, it 
-;   executes an unconditional jump to the final label (.false).
+; - Usage: iENGINE_INPUT_AXIS_IF InputStateAddress, UpLabel, DownLabel, LeftLabel, RightLabel, FalseLabel
+; - Registers: InputState -> A
+; - Description: Evaluates directional buttons with priority (Up > Down > Left > Right).
 MACRO iENGINE_INPUT_AXIS_IF
 ; Up
 ld a, [\1]
@@ -114,9 +107,9 @@ jr \6
 ENDM
 
 ; iENGINE_INPUT_BEGIN
-; - Destroys: Registers A
 ; - Usage: iENGINE_INPUT_BEGIN
-; - Description: Initializes input worker memory
+; - Registers: 0 -> A
+; - Description: Initializes input worker memory to zero.
 MACRO iENGINE_INPUT_BEGIN
 ld a, 0
 ld [wEngineInputCurrent], a
@@ -126,14 +119,9 @@ ld [wEngineInputReleased], a
 ENDM
 
 ; iENGINE_INPUT_UPDATE
-; - Destroys: Registers A, B, and C.
 ; - Usage: iENGINE_INPUT_UPDATE
-; - Writes: wEngineInputCurrent, wEngineInputPrevious, wEngineInputPressed, and wEngineInputReleased
-; - Description: Reads the physical joypad and constructs a unified 8-bit input state.
-;   Because the hardware shares data lines, it must poll the D-Pad and Action buttons in two separate passes.
-;   We must clear _rJOYP at the end of the operation to disconnect both input columns, 
-;   which prevents ghost inputs, ensures consistent interrupt behavior, and is 
-;   mandatory if the system utilizes the HALT instruction.
+; - Registers: Current state -> A, D-Pad/Action scratch -> B, Delta -> C
+; - Description: Reads physical joypad and constructs unified 8-bit input state.
 MACRO iENGINE_INPUT_UPDATE
 ; Copy current into previous
 ld a, [wEngineInputCurrent]
@@ -174,17 +162,20 @@ ld a, fENGINE_INPUT_CLEAR
 ld [_rJOYP], a
 ENDM
 
-; iENGINE_INPUT_UPDATE_SUBROUTINE
-; - Destroys: Registers A, B, and C.
-; - Usage: call iEngine_Input_Update
-; - Writes: wEngineInputCurrent, wEngineInputPrevious, wEngineInputPressed, and wEngineInputReleased
-; - Description: Reads the physical joypad and constructs a unified 8-bit input state.
-;   Because the hardware shares data lines, it must poll the D-Pad and Action buttons in two separate passes.
-;   We must clear _rJOYP at the end of the operation to disconnect both input columns, 
-;   which prevents ghost inputs, ensures consistent interrupt behavior, and is 
-;   mandatory if the system utilizes the HALT instruction.
-MACRO iENGINE_INPUT_UPDATE_SUBROUTINE
+; iENGINE_INPUT_UPDATE_SUBROUTINE_INCLUDE
+; - Usage: call Engine_Input_Update
+; - Registers: Current state -> A, D-Pad/Action scratch -> B, Delta -> C
+; - Description: Adds "Engine_Input_Update" subroutine.
+MACRO iENGINE_INPUT_UPDATE_SUBROUTINE_INCLUDE
 Engine_Input_Update:
 iENGINE_INPUT_UPDATE
 ret
+ENDM
+
+; iENGINE_INPUT_UPDATE_SUBROUTINE_CALL
+; - Usage: iENGINE_INPUT_UPDATE_SUBROUTINE_CALL
+; - Registers: Current state -> A, D-Pad/Action scratch -> B, Delta -> C
+; - Description: Calls the "Engine_Input_Update" subroutine.
+MACRO iENGINE_INPUT_UPDATE_SUBROUTINE_CALL
+call Engine_Input_Update
 ENDM
